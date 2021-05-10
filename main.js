@@ -2,8 +2,8 @@ var c = document.getElementById("myCanvas");
 var ctx = c.getContext("2d");
 c.margin = 0;
 c.padding = 0;
-c.width = 1918;
-c.height = 964;
+c.width = 700;
+c.height = 700;
   
 function generateRandomColorHex() {
   return "#" + ("00000" + Math.floor(Math.random() * Math.pow(16, 6)).toString(16)).slice(-6);
@@ -78,6 +78,16 @@ function dot(A, x2, y2){
 	return A.x*x2 + A.y*y2;
 }
 
+function linePoint(line, x, y){
+	var len = Math.sqrt((line.x1 - line.x2)*(line.x1 - line.x2) + (line.y1 - line.y2)*(line.y1 - line.y2));
+	var d1 = Math.sqrt((line.x1 - x)*(line.x1 - x) + (line.y1 - y)*(line.y1 - y));
+	var d2 = Math.sqrt((line.x2 - x)*(line.x2 - x) + (line.y2 - y)*(line.y2 - y));
+	var buffer = 3;
+	if ((d1+d2 >= lineLen-buffer) && (d1+d2 <= lineLen+buffer)) {
+		return true;
+	}
+	return false;
+}
 
 class Ball{
 	constructor(x, y, r, mass, vx, vy) {
@@ -99,8 +109,7 @@ class Ball{
 		
 		for(var i=0; i<Lines.length; i++){
 			if(this.checkLinearCollision(Lines[i])){
-				//Console.log("yes");
-				var d = dot(1, -1/Lines[i].slope, this.x - Lines[i].x1, this.y - Lines[i].y1);
+				Console.log("yes");
 				this.vel.x = -this.vel.x;
 				this.vel.y = -this.vel.y;
 			}
@@ -123,16 +132,34 @@ class Ball{
 		this.vel.y += vector.y/this.mass;
 	}
 	
-	checkLinearCollision(line){
-		var midX = 0.5*(line.x1 + line.x2);
-		var midY = 0.5*(line.y1 + line.y2);
-		var length = Math.sqrt((this.x - midX)*(this.x - midX) + (this.y - midY)*(this.y - midY));
-		var radi = Math.sqrt((line.x1 - midX)*(line.x1 - midX) + (line.y1 - midY)*(line.y1 - midY));
-		if(length < this.r+radi){
-			//Do collision check
-		}else{
-			return false;
+	checkPointCollision(x, y){
+		var d = Math.sqrt((this.x - x)*(this.x - x) + (this.y - y)*(this.y - y));
+		if(d <= this.r){
+			return true;
 		}
+		return false;
+	}
+
+	checkLinearCollision(line){
+		if(this.checkPointCollision(line.x1, line.y1) || this.checkPointCollision(line.x2, line.y2)){
+			return true;
+		}
+		var dX = line.x2 - line.x1;
+		var dY = line.y2 - line.y1;
+		var length = Math.sqrt(dX*dX + dY*dY);
+		//dot = ( ((cx-x1)*(x2-x1)) + ((cy-y1)*(y2-y1)) ) / pow(len,2);
+		var dot = (((this.x - line.x1)*dX) + ((this.y - line.y1) * dY)) / (length*length); 
+		var closestX = line.x1 + (dot * (line.x2-line.x1));
+		var closestY = line.y1 + (dot * (line.y2-line.y1));
+		if (!linePoint(line, closestX,closestY);){return false;}
+
+		var distX = closestX - this.x;
+		var distY = closestY - this.y;
+		var d = Math.sqrt( (distX*distX) + (distY*distY) );
+		if(d < this.r){
+			return true;
+		}
+		return false;
 	}
 	
 }
@@ -145,7 +172,6 @@ class Line{
 		this.y1 = y;
 		this.x2 = x+abs(width);
 		this.y2 = y+height;
-		this.slope = (this.y2-this.y1)/(this.x2-this.x1);
 		this.thick = thickness;
 		this.color = '#000000';
 		Lines.push(this);
@@ -162,7 +188,7 @@ class Line{
 }
 
 var car = new Ball(220,100,15, 10, 3,3, '#FF0000');
-new Line(200, 900, 1200, -100, 3);
+new Line(200, 200, 300, -100, 3);
 
 var id = setInterval(frame, 10);
 function frame(){
