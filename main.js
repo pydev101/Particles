@@ -80,10 +80,12 @@ function dot(A, x2, y2){
 
 function linePoint(line, x, y){
 	var len = Math.sqrt((line.x1 - line.x2)*(line.x1 - line.x2) + (line.y1 - line.y2)*(line.y1 - line.y2));
+
 	var d1 = Math.sqrt((line.x1 - x)*(line.x1 - x) + (line.y1 - y)*(line.y1 - y));
 	var d2 = Math.sqrt((line.x2 - x)*(line.x2 - x) + (line.y2 - y)*(line.y2 - y));
-	var buffer = 3;
-	if ((d1+d2 >= lineLen-buffer) && (d1+d2 <= lineLen+buffer)) {
+	var buffer = line.thick;
+	
+	if ( ( (d1+d2) >= (len-buffer) ) && ((d1+d2) <= (len+buffer)) ) {
 		return true;
 	}
 	return false;
@@ -109,7 +111,6 @@ class Ball{
 		
 		for(var i=0; i<Lines.length; i++){
 			if(this.checkLinearCollision(Lines[i])){
-				Console.log("yes");
 				this.vel.x = -this.vel.x;
 				this.vel.y = -this.vel.y;
 			}
@@ -144,15 +145,20 @@ class Ball{
 		if(this.checkPointCollision(line.x1, line.y1) || this.checkPointCollision(line.x2, line.y2)){
 			return true;
 		}
+		
 		var dX = line.x2 - line.x1;
 		var dY = line.y2 - line.y1;
 		var length = Math.sqrt(dX*dX + dY*dY);
 		//dot = ( ((cx-x1)*(x2-x1)) + ((cy-y1)*(y2-y1)) ) / pow(len,2);
-		var dot = (((this.x - line.x1)*dX) + ((this.y - line.y1) * dY)) / (length*length); 
-		var closestX = line.x1 + (dot * (line.x2-line.x1));
-		var closestY = line.y1 + (dot * (line.y2-line.y1));
-		if (!linePoint(line, closestX,closestY);){return false;}
+		var dotA = (((this.x - line.x1)*dX) + ((this.y - line.y1) * dY)) / (length*length); 
+		var closestX = line.x1 + (dotA * (line.x2-line.x1));
+		var closestY = line.y1 + (dotA * (line.y2-line.y1));
 
+		if (!linePoint(line, closestX, closestY)){
+			return false;
+		}
+
+		
 		var distX = closestX - this.x;
 		var distY = closestY - this.y;
 		var d = Math.sqrt( (distX*distX) + (distY*distY) );
@@ -187,7 +193,7 @@ class Line{
 	}
 }
 
-var car = new Ball(220,100,15, 10, 3,3, '#FF0000');
+var car = new Ball(220,100,15, 10, 3,0, '#FF0000');
 new Line(200, 200, 300, -100, 3);
 
 var id = setInterval(frame, 10);
