@@ -62,6 +62,12 @@ class Vector{
 	}
 	
 	getNormalVector(){
+		if(this.y == 0){
+			return new Vector(0, 1);
+		}
+		if(this.x == 0){
+			return new Vector(1,0);
+		}
 		var s = this.y/this.x;
 		s = (-1)/s;
 		s = new Vector(1, s);
@@ -73,10 +79,10 @@ class Vector{
 		this.y = this.y*s;
 	}
 }
-function dot(x1, y1, x2, y2){
+function dotP(x1, y1, x2, y2){
 	return x1*x2 + y1*y2;
 }
-function dot(A, B){
+function dotV(A, B){
 	return A.x*B.x + A.y*B.y;
 }
 function dot(A, x2, y2){
@@ -116,16 +122,16 @@ class Ball{
 		this.accel.scale(0);
 		this.applyForce(new Vector(0, 0.3));
 
-		if(this.x+this.r > c.width){this.vel.x = -this.vel.x;}
-		if(this.x-this.r < 0){this.vel.x = -this.vel.x;}
-		if(this.y+this.r > c.height){this.vel.y = -this.vel.y;}
-		if(this.y-this.r < 0){this.vel.y = -this.vel.y;}
+		if(this.x+this.r > c.width){this.x = c.width-this.r; this.vel.x = -this.vel.x;}
+		if(this.x-this.r < 0){this.x = this.r; this.vel.x = -this.vel.x;}
+		if(this.y+this.r > c.height){this.y = c.height-this.r; this.vel.y = -this.vel.y;}
+		if(this.y-this.r < 0){this.y = this.r; this.vel.y = -this.vel.y;}
 		
 		for(var i=0; i<Lines.length; i++){
 			var coll = this.checkLinearCollision(Lines[i]);
 			if(coll != false){
 				this.y = coll[1]+this.r*sign(this.y - coll[1]);//Prevents clipping
-
+			
 				//Normalized unit vector of line (Direction of Normal force)
 				var v = new Vector(Lines[i].x2 - Lines[i].x1, Lines[i].y2 - Lines[i].y1);
 				v = v.getNormalVector();
@@ -133,13 +139,18 @@ class Ball{
 					v.scale(-1);
 				}
 
-				//TODO ADD MOMENTUM IN TO PREVENT ODD STICKING EFFECT
-				//ISSUE WITH DIRECTION; Ignores director of force vectors only looks at net mag
 				var magOfA = 0;
-				if(dot(this.accel, v) < 0){
-					magOfA = this.accel.getMag();
+				
+				//If accelerating into line (Netforce acting into line)
+				if(dotV(this.accel, v) < 0){
+					magOfA += this.accel.getMag()*cos( PI - Math.acos( ( dotV(this.accel, v) ) / ( this.accel.getMag() * v.getMag() ) ) );
 				}
-
+				
+				//If moving into line
+				if(dotV(this.vel, v) < 0){
+					magOfA += 2*this.vel.getMag()*cos( PI - Math.acos( ( dotV(this.vel, v) ) / (this.vel.getMag() * v.getMag()) ) );
+				}
+				
 				//Apply Force
 				v.scale(magOfA);
 				v.scale(this.mass);
@@ -184,7 +195,6 @@ class Ball{
 		var dX = line.x2 - line.x1;
 		var dY = line.y2 - line.y1;
 		var length = Math.sqrt(dX*dX + dY*dY);
-		//dot = ( ((cx-x1)*(x2-x1)) + ((cy-y1)*(y2-y1)) ) / pow(len,2);
 		var dotA = (((this.x - line.x1)*dX) + ((this.y - line.y1) * dY)) / (length*length); 
 		var closestX = line.x1 + (dotA * (line.x2-line.x1));
 		var closestY = line.y1 + (dotA * (line.y2-line.y1));
@@ -241,7 +251,11 @@ class Line{
 }
 
 var car = new Ball(320,100,15, 10, 0,0, '#FF0000');
-new Line(200, 200, 300, -100, 3);
+
+new Line(1,1,699,0,3);
+new Line(699,1,0,699,3);
+new Line(1,699,699,0,3);
+new Line(1,1,0,699,3);
 
 var id = setInterval(frame, 10);
 function frame(){
