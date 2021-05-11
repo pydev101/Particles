@@ -67,6 +67,11 @@ class Vector{
 		s = new Vector(1, s);
 		return s.getUnitVector();
 	}
+
+	scale(s){
+		this.x = this.x*s;
+		this.y = this.y*s;
+	}
 }
 function dot(x1, y1, x2, y2){
 	return x1*x2 + y1*y2;
@@ -76,6 +81,10 @@ function dot(A, B){
 }
 function dot(A, x2, y2){
 	return A.x*x2 + A.y*y2;
+}
+function sign(x){
+	if(x<0){return -1;}
+	return 1;
 }
 
 function linePoint(line, x, y){
@@ -98,24 +107,38 @@ class Ball{
 		this.r = r;
 		this.mass = mass;
 		this.vel = new Vector(vx, vy);
+		this.accel = new Vector(0, 0);
 		this.thick = 3;
 		this.color = '#FF0000';
 	}
 	
 	update(){
+		this.accel.scale(0);
+		this.applyForce(new Vector(0, 0.3));
+
 		if(this.x+this.r > c.width){this.vel.x = -this.vel.x;}
 		if(this.x-this.r < 0){this.vel.x = -this.vel.x;}
 		if(this.y+this.r > c.height){this.vel.y = -this.vel.y;}
 		if(this.y-this.r < 0){this.vel.y = -this.vel.y;}
-		this.applyForce(new Vector(0, 0.3));
 		
 		for(var i=0; i<Lines.length; i++){
-			if(this.checkLinearCollision(Lines[i])){
-				this.vel.x = -this.vel.x;
-				this.vel.y = -this.vel.y;
+			var coll = this.checkLinearCollision(Lines[i]);
+			if(coll != false){
+				//TODO ADD MOMENTUM IN TO PREVENT ODD STICKING EFFECT
+				this.y = coll[1]+this.r*sign(this.y - coll[1]);
+				var v = new Vector(Lines[i].x2 - Lines[i].x1, Lines[i].y2 - Lines[i].y1);
+				v = v.getNormalVector();
+				if(dot(v, this.x-coll[0], this.y-coll[1]) < 1){
+					v.scale(-1);
+				}
+				var mag = this.mass*Math.sqrt(this.accel.y*this.accel.y + this.accel.x*this.accel.x);
+				v.scale(mag);
+				this.applyForce(v);
 			}
 		}
 		
+		this.vel.x += this.accel.x;
+		this.vel.y += this.accel.y;
 		this.x += this.vel.x;
 		this.y += this.vel.y;
 	}
@@ -129,8 +152,8 @@ class Ball{
 	}
 	
 	applyForce(vector){
-		this.vel.x += vector.x/this.mass;
-		this.vel.y += vector.y/this.mass;
+		this.accel.x += vector.x/this.mass;
+		this.accel.y += vector.y/this.mass;
 	}
 	
 	checkPointCollision(x, y){
@@ -142,8 +165,10 @@ class Ball{
 	}
 
 	checkLinearCollision(line){
-		if(this.checkPointCollision(line.x1, line.y1) || this.checkPointCollision(line.x2, line.y2)){
-			return true;
+		if(this.checkPointCollision(line.x1, line.y1)){
+			return [line.x1, line.y1];
+		}else if(this.checkPointCollision(line.x2, line.y2)){
+			return [line.x2, line.y2];
 		}
 		
 		var dX = line.x2 - line.x1;
@@ -163,7 +188,7 @@ class Ball{
 		var distY = closestY - this.y;
 		var d = Math.sqrt( (distX*distX) + (distY*distY) );
 		if(d < this.r){
-			return true;
+			return [closestX, closestY];
 		}
 		return false;
 	}
@@ -191,9 +216,21 @@ class Line{
 		ctx.lineWidth = this.thick;
 		ctx.stroke();
 	}
+
+	length(){
+		return Math.sqrt( (this.x2-this.x1)*(this.x2-this.x1) + (this.y2-this.y1)*(this.y2-this.y1) );
+	}
+
+	height(){
+		return abs(this.y2 - this.y1);
+	}
+
+	width(){
+		return abs(this.x2 - this.x1);
+	}
 }
 
-var car = new Ball(220,100,15, 10, 3,0, '#FF0000');
+var car = new Ball(320,100,15, 10, 0,0, '#FF0000');
 new Line(200, 200, 300, -100, 3);
 
 var id = setInterval(frame, 10);
