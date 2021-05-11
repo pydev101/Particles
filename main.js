@@ -124,15 +124,25 @@ class Ball{
 		for(var i=0; i<Lines.length; i++){
 			var coll = this.checkLinearCollision(Lines[i]);
 			if(coll != false){
-				//TODO ADD MOMENTUM IN TO PREVENT ODD STICKING EFFECT
-				this.y = coll[1]+this.r*sign(this.y - coll[1]);
+				this.y = coll[1]+this.r*sign(this.y - coll[1]);//Prevents clipping
+
+				//Normalized unit vector of line (Direction of Normal force)
 				var v = new Vector(Lines[i].x2 - Lines[i].x1, Lines[i].y2 - Lines[i].y1);
 				v = v.getNormalVector();
 				if(dot(v, this.x-coll[0], this.y-coll[1]) < 1){
 					v.scale(-1);
 				}
-				var mag = this.mass*Math.sqrt(this.accel.y*this.accel.y + this.accel.x*this.accel.x);
-				v.scale(mag);
+
+				//TODO ADD MOMENTUM IN TO PREVENT ODD STICKING EFFECT
+				//ISSUE WITH DIRECTION; Ignores director of force vectors only looks at net mag
+				var magOfA = 0;
+				if(dot(this.accel, v) < 0){
+					magOfA = this.accel.getMag();
+				}
+
+				//Apply Force
+				v.scale(magOfA);
+				v.scale(this.mass);
 				this.applyForce(v);
 			}
 		}
