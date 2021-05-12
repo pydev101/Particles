@@ -4,7 +4,10 @@ c.margin = 0;
 c.padding = 0;
 c.width = 700;
 c.height = 700;
-  
+
+const gravity = 0.3;
+const scale = 1;
+
 function generateRandomColorHex() {
   return "#" + ("00000" + Math.floor(Math.random() * Math.pow(16, 6)).toString(16)).slice(-6);
 }
@@ -93,6 +96,41 @@ function sign(x){
 	return 1;
 }
 
+
+var Lines = [];
+class Line{
+	constructor(x, y, width, height, thickness){
+		this.x1 = x;
+		this.y1 = y;
+		this.x2 = x+abs(width);
+		this.y2 = y+height;
+		this.thick = thickness;
+		this.color = '#000000';
+		Lines.push(this);
+	}
+	
+	draw(){
+		ctx.beginPath();
+		ctx.strokeStyle = this.color;
+		ctx.moveTo(this.x1, this.y1);
+		ctx.lineTo(this.x2, this.y2);
+		ctx.lineWidth = this.thick;
+		ctx.stroke();
+	}
+
+	length(){
+		return Math.sqrt( (this.x2-this.x1)*(this.x2-this.x1) + (this.y2-this.y1)*(this.y2-this.y1) );
+	}
+
+	height(){
+		return abs(this.y2 - this.y1);
+	}
+
+	width(){
+		return abs(this.x2 - this.x1);
+	}
+}
+
 function linePoint(line, x, y){
 	var len = Math.sqrt((line.x1 - line.x2)*(line.x1 - line.x2) + (line.y1 - line.y2)*(line.y1 - line.y2));
 
@@ -106,8 +144,9 @@ function linePoint(line, x, y){
 	return false;
 }
 
+var Balls = [];
 class Ball{
-	constructor(x, y, r, mass, vx, vy) {
+	constructor(x, y, r, mass, vx, vy, color) {
 		this.x = x;
 		this.y = y;
 		this.r = r;
@@ -115,40 +154,73 @@ class Ball{
 		this.vel = new Vector(vx, vy);
 		this.accel = new Vector(0, 0);
 		this.thick = 3;
-		this.color = '#FF0000';
+		this.color = color;
+		this.bounceCoefficent = 1; //0-1; Total absorbtion to totally elastic
+		Balls.push(this);
 	}
 	
-	update(){
+	updateAccel(){
+		//Clear A
 		this.accel.scale(0);
-		this.applyForce(new Vector(0, 0.3));
+		//Gravity
+		this.applyForce(new Vector(0, gravity));
 
-		if(this.x+this.r > c.width){this.x = c.width-this.r; this.vel.x = -this.vel.x;}
-		if(this.x-this.r < 0){this.x = this.r; this.vel.x = -this.vel.x;}
-		if(this.y+this.r > c.height){this.y = c.height-this.r; this.vel.y = -this.vel.y;}
-		if(this.y-this.r < 0){this.y = this.r; this.vel.y = -this.vel.y;}
+		//Moveable Objects
+		for(var i=0; i<Balls.length; i++){
+			for(var z=0; z<Balls.length; z++){
+				var ball = Balls[z];
+				if(i==z){continue;}
+				//console.log("A");
+				if(Math.sqrt( (ball.x - this.x)*(ball.x - this.x) + (ball.y - this.y)*(ball.y - this.y) ) < this.r+ball.r){
+					console.log(Math.sqrt( (ball.x - this.x)*(ball.x - this.x) + (ball.y - this.y)*(ball.y - this.y) ));
+				}
+				if(Math.sqrt( (ball.x - this.x)*(ball.x - this.x) + (ball.y - this.y)*(ball.y - this.y) ) <= this.r+ball.r){
+					//TODO collision dtetection between 2 circles isn't working right; Untested normal force vectors
+					
+					
+					/*
+					//Normal Vector
+					var v = (new Vector(this.x - ball.x, this.y - ball.y)).getNormalVector();
+					
+					//Apply normal force
+					var magOfA = 0;
+					if(dotV(this.accel, v) < 0){
+						magOfA += this.accel.getMag()*cos( PI - Math.acos( ( dotV(this.accel, v) ) / ( this.accel.getMag() * v.getMag() ) ) );
+					}
+					
+					//Bounce collision
+					if(dotV(this.vel, v) < 0){
+						magOfA += this.vel.getMag()*cos( PI - Math.acos( ( dotV(this.vel, v) ) / (this.vel.getMag() * v.getMag()) ) );
+					}
+						
+					//Apply Force
+					v.scale(magOfA);
+					v.scale(this.mass);
+					this.applyForce(v);*/
+				}
+			}
+		}
 		
+		//Immoveable objects
 		for(var i=0; i<Lines.length; i++){
 			var coll = this.checkLinearCollision(Lines[i]);
 			if(coll != false){
-				this.y = coll[1]+this.r*sign(this.y - coll[1]);//Prevents clipping
-			
 				//Normalized unit vector of line (Direction of Normal force)
 				var v = new Vector(Lines[i].x2 - Lines[i].x1, Lines[i].y2 - Lines[i].y1);
 				v = v.getNormalVector();
 				if(dot(v, this.x-coll[0], this.y-coll[1]) < 1){
 					v.scale(-1);
 				}
-
-				var magOfA = 0;
 				
 				//If accelerating into line (Netforce acting into line)
+				var magOfA = 0;
 				if(dotV(this.accel, v) < 0){
 					magOfA += this.accel.getMag()*cos( PI - Math.acos( ( dotV(this.accel, v) ) / ( this.accel.getMag() * v.getMag() ) ) );
 				}
 				
 				//If moving into line
 				if(dotV(this.vel, v) < 0){
-					magOfA += 2*this.vel.getMag()*cos( PI - Math.acos( ( dotV(this.vel, v) ) / (this.vel.getMag() * v.getMag()) ) );
+					magOfA += (1+this.bounceCoefficent)*this.vel.getMag()*cos( PI - Math.acos( ( dotV(this.vel, v) ) / (this.vel.getMag() * v.getMag()) ) );
 				}
 				
 				//Apply Force
@@ -157,11 +229,13 @@ class Ball{
 				this.applyForce(v);
 			}
 		}
-		
+	}
+	
+	updatePos(){
 		this.vel.x += this.accel.x;
 		this.vel.y += this.accel.y;
-		this.x += this.vel.x;
-		this.y += this.vel.y;
+		this.x += this.vel.x*scale;
+		this.y += this.vel.y*scale;
 	}
 	
 	draw(){
@@ -207,7 +281,7 @@ class Ball{
 		var distX = closestX - this.x;
 		var distY = closestY - this.y;
 		var d = Math.sqrt( (distX*distX) + (distY*distY) );
-		if(d < this.r){
+		if(d <= this.r){
 			return [closestX, closestY];
 		}
 		return false;
@@ -215,43 +289,13 @@ class Ball{
 	
 }
 
-var Lines = [];
+//Ball
+new Ball(250, 699-15,15, 10, 0.1, 0, '#FF0000');
+new Ball(350, 699-15, 15, 10, 0, 0, 0, 'black');
 
-class Line{
-	constructor(x, y, width, height, thickness){
-		this.x1 = x;
-		this.y1 = y;
-		this.x2 = x+abs(width);
-		this.y2 = y+height;
-		this.thick = thickness;
-		this.color = '#000000';
-		Lines.push(this);
-	}
-	
-	draw(){
-		ctx.beginPath();
-		ctx.strokeStyle = this.color;
-		ctx.moveTo(this.x1, this.y1);
-		ctx.lineTo(this.x2, this.y2);
-		ctx.lineWidth = this.thick;
-		ctx.stroke();
-	}
 
-	length(){
-		return Math.sqrt( (this.x2-this.x1)*(this.x2-this.x1) + (this.y2-this.y1)*(this.y2-this.y1) );
-	}
-
-	height(){
-		return abs(this.y2 - this.y1);
-	}
-
-	width(){
-		return abs(this.x2 - this.x1);
-	}
-}
-
-var car = new Ball(320,100,15, 10, 0,0, '#FF0000');
-
+//Box
+new Line(290, 100, 5, 0, 3)
 new Line(1,1,699,0,3);
 new Line(699,1,0,699,3);
 new Line(1,699,699,0,3);
@@ -264,9 +308,18 @@ function frame(){
 	for(var i=0; i<Lines.length; i++){
 		Lines[i].draw();
 	}
-	car.update();
-	car.draw();
+	for(var i=0; i<Balls.length; i++){
+		Balls[i].updateAccel();
+	}
+	for(var i=0; i<Balls.length; i++){
+		Balls[i].updatePos();
+		Balls[i].draw();
+	}
 }
+
+
+//new Line(220, 150, 250, 30, 3);
+
 
 /*
   function getMousePos(canvas, evt) {
