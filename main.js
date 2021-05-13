@@ -95,7 +95,9 @@ function sign(x){
 	if(x<0){return -1;}
 	return 1;
 }
-
+function random(min, max){
+	return Math.random()*(max-min+1)+min;
+}
 
 var Lines = [];
 class Line{
@@ -166,38 +168,26 @@ class Ball{
 		this.applyForce(new Vector(0, gravity));
 
 		//Moveable Objects
+		//Maybe be unrealistic but works??? TODO
 		for(var i=0; i<Balls.length; i++){
-			for(var z=0; z<Balls.length; z++){
-				var ball = Balls[z];
-				if(i==z){continue;}
-				//console.log("A");
-				if(Math.sqrt( (ball.x - this.x)*(ball.x - this.x) + (ball.y - this.y)*(ball.y - this.y) ) < this.r+ball.r){
-					console.log(Math.sqrt( (ball.x - this.x)*(ball.x - this.x) + (ball.y - this.y)*(ball.y - this.y) ));
+			if(Balls[i] === this){continue;}
+			var v = new Vector(this.x - Balls[i].x, this.y - Balls[i].y);
+			if(v.getMag() <= this.r+Balls[i].r){
+				var forceVector = v.getUnitVector();
+				
+				var magOfA = 0;
+				if(dotV(this.accel, forceVector) < 0){
+					magOfA += this.accel.getMag()*cos( PI - Math.acos( ( dotV(this.accel, forceVector) ) / ( this.accel.getMag() * forceVector.getMag() ) ) );
 				}
-				if(Math.sqrt( (ball.x - this.x)*(ball.x - this.x) + (ball.y - this.y)*(ball.y - this.y) ) <= this.r+ball.r){
-					//TODO collision dtetection between 2 circles isn't working right; Untested normal force vectors
-					
-					
-					/*
-					//Normal Vector
-					var v = (new Vector(this.x - ball.x, this.y - ball.y)).getNormalVector();
-					
-					//Apply normal force
-					var magOfA = 0;
-					if(dotV(this.accel, v) < 0){
-						magOfA += this.accel.getMag()*cos( PI - Math.acos( ( dotV(this.accel, v) ) / ( this.accel.getMag() * v.getMag() ) ) );
-					}
-					
-					//Bounce collision
-					if(dotV(this.vel, v) < 0){
-						magOfA += this.vel.getMag()*cos( PI - Math.acos( ( dotV(this.vel, v) ) / (this.vel.getMag() * v.getMag()) ) );
-					}
-						
-					//Apply Force
-					v.scale(magOfA);
-					v.scale(this.mass);
-					this.applyForce(v);*/
-				}
+				
+				var x = (1+this.bounceCoefficent)*this.vel.getMag()*cos( PI - Math.acos( ( dotV(this.vel, forceVector) ) / (this.vel.getMag() * forceVector.getMag()) ) );
+				if(isNaN(x)){x=0;}
+				magOfA += x;
+				console.log((this.vel.getMag() * forceVector.getMag()) );
+				
+				forceVector.scale(magOfA);
+				forceVector.scale(this.mass);
+				this.applyForce(forceVector);
 			}
 		}
 		
@@ -220,7 +210,7 @@ class Ball{
 				
 				//If moving into line
 				if(dotV(this.vel, v) < 0){
-					magOfA += (1+this.bounceCoefficent)*this.vel.getMag()*cos( PI - Math.acos( ( dotV(this.vel, v) ) / (this.vel.getMag() * v.getMag()) ) );
+					magOfA += (1+this.bounceCoefficent)*this.vel.getMag()*cos( PI - Math.acos( ( dotV(this.vel, v) ) / (this.vel.getMag() * v.getMag()) ) ); //Maybe issue with division if this.vel.getMag = 0
 				}
 				
 				//Apply Force
@@ -290,12 +280,17 @@ class Ball{
 }
 
 //Ball
-new Ball(250, 699-15,15, 10, 0.1, 0, '#FF0000');
-new Ball(350, 699-15, 15, 10, 0, 0, 0, 'black');
 
+//x, y, r, mass, vx, vy, color
 
+for(var i=0; i<random(1,5); i++){
+	new Ball(random(100, 500), random(100, 500), random(10, 25), 10, random(-5, 5), random(-1, 1), generateRandomColorHex());
+}
+
+for(var i=0; i<random(1,5); i++){
+	new Line(random(100, 500),random(100, 500),random(25, 200),random(-100, 100),3);
+}
 //Box
-new Line(290, 100, 5, 0, 3)
 new Line(1,1,699,0,3);
 new Line(699,1,0,699,3);
 new Line(1,699,699,0,3);
