@@ -81,6 +81,11 @@ class Vector{
 		this.x = this.x*s;
 		this.y = this.y*s;
 	}
+	
+	add(vec){
+		this.x += vec.x;
+		this.y += vec.y;
+	}
 }
 function dotP(x1, y1, x2, y2){
 	return x1*x2 + y1*y2;
@@ -97,6 +102,11 @@ function sign(x){
 }
 function random(min, max){
 	return Math.random()*(max-min+1)+min;
+}
+function scaleV(vec, scale){
+	var x = new Vector(vec.x, vec.y);
+	x.scale(scale);
+	return x
 }
 
 var Lines = [];
@@ -163,13 +173,13 @@ class Ball{
 	
 	updateAccel(){
 		//Clear A
-		this.accel.scale(0);
+		var newAccel = new Vector(0,0);
 		//Gravity
-		this.applyForce(new Vector(0, gravity));
+		newAccel.add(new Vector(0, gravity));
 
 		//Moveable Objects
 		//Maybe be unrealistic but works??? TODO
-		for(var i=0; i<Balls.length; i++){
+		/*for(var i=0; i<Balls.length; i++){
 			if(Balls[i] === this){continue;}
 			var v = new Vector(this.x - Balls[i].x, this.y - Balls[i].y);
 			if(v.getMag() <= this.r+Balls[i].r){
@@ -189,7 +199,7 @@ class Ball{
 				forceVector.scale(this.mass);
 				this.applyForce(forceVector);
 			}
-		}
+		}*/
 		
 		//Immoveable objects
 		for(var i=0; i<Lines.length; i++){
@@ -201,24 +211,32 @@ class Ball{
 				if(dot(v, this.x-coll[0], this.y-coll[1]) < 1){
 					v.scale(-1);
 				}
+				var magOfA = 0;
+				//If line overshoots all of previous acceleration was applied too much for the distance of the overshot; must remove when moving the object back to "real" position tangent to the line
+				//TODO for previous acceleration (this.accel) in the direction of the collision
+				var vIn = this.vel.getMag()*cos( PI - Math.acos( ( dotV(this.vel, v) ) / (this.vel.getMag() * v.getMag()) ) ); //Maybe issue with division if this.vel.getMag = 0
+				//TODO also modify vIn with "real" acceleration to fix collision issues
+				var PosS = scaleV(v, this.r);
+				var Xs = coll[0] + PosS.x; 
+				var Ys = coll[1] + PosS.y; 
+				
 				
 				//If accelerating into line (Netforce acting into line)
-				var magOfA = 0;
 				if(dotV(this.accel, v) < 0){
 					magOfA += this.accel.getMag()*cos( PI - Math.acos( ( dotV(this.accel, v) ) / ( this.accel.getMag() * v.getMag() ) ) );
 				}
 				
 				//If moving into line
 				if(dotV(this.vel, v) < 0){
-					magOfA += (1+this.bounceCoefficent)*this.vel.getMag()*cos( PI - Math.acos( ( dotV(this.vel, v) ) / (this.vel.getMag() * v.getMag()) ) ); //Maybe issue with division if this.vel.getMag = 0
+					magOfA += (1+this.bounceCoefficent)*vIn;
 				}
 				
-				//Apply Force
+				//Apply Acel
 				v.scale(magOfA);
-				v.scale(this.mass);
-				this.applyForce(v);
+				newAccel.add(v);
 			}
 		}
+		this.accel = newAccel;
 	}
 	
 	updatePos(){
@@ -282,36 +300,46 @@ class Ball{
 //Ball
 
 //x, y, r, mass, vx, vy, color
-
+/*
 for(var i=0; i<random(1,5); i++){
 	new Ball(random(100, 500), random(100, 500), random(10, 25), 10, random(-5, 5), random(-1, 1), generateRandomColorHex());
 }
 
 for(var i=0; i<random(1,5); i++){
 	new Line(random(100, 500),random(100, 500),random(25, 200),random(-100, 100),3);
-}
+}*/
+new Ball(random(100, 500), 300, random(10, 25), 10, 0, 0, "black");
+new Ball(random(100, 500), 300, random(10, 25), 30, 0, 0, "red");
+
 //Box
 new Line(1,1,699,0,3);
 new Line(699,1,0,699,3);
 new Line(1,699,699,0,3);
 new Line(1,1,0,699,3);
 
-var id = setInterval(frame, 10);
-function frame(){
-	ctx.fillStyle = "white";
-	ctx.fillRect(0, 0, c.width, c.height);
-	for(var i=0; i<Lines.length; i++){
-		Lines[i].draw();
-	}
-	for(var i=0; i<Balls.length; i++){
-		Balls[i].updateAccel();
-	}
-	for(var i=0; i<Balls.length; i++){
-		Balls[i].updatePos();
-		Balls[i].draw();
-	}
+
+function sleep(msec) {  
+    return new Promise(resolve => setTimeout(resolve, msec));  
 }
 
+async function main(){   
+	while(true){
+		ctx.fillStyle = "white";
+		ctx.fillRect(0, 0, c.width, c.height);
+		for(var i=0; i<Lines.length; i++){
+			Lines[i].draw();
+		}
+		for(var i=0; i<Balls.length; i++){
+			Balls[i].updateAccel();
+		}
+		for(var i=0; i<Balls.length; i++){
+			Balls[i].updatePos();
+			Balls[i].draw();
+		}
+		await sleep(15);
+	}
+}
+main();
 
 //new Line(220, 150, 250, 30, 3);
 
